@@ -1,56 +1,55 @@
 <?php
- //lo primero es arrancar la sesión para poder guardar o leer datos
+// Arrancamos la sesión temporal
 session_start();
 
-// Si por alguna razón la matriz no existe  la creamos
 if (!isset($_SESSION["productos"])) {
     $_SESSION["productos"] = array();
 }
 
-// Variable para guardar y mostrar mensajes de error al usuario
 $error = "";
 
-// Solo ejecutamos este bloque si el usuario le dio clic al botón con el name="guardar"
 if (isset($_POST["guardar"])) {
 
-    // Recibimos todos los datos que el usuario escribio en el formulario
-    $id = $_POST["id"];
-    $nombre = $_POST["nombre"];
-    $descripcion = $_POST["descripcion"];
-    $precio = $_POST["precio"];
-    $stock = $_POST["stock"];
-    $categoria = $_POST["categoria"];
+    // 1. SANITIZACIÓN: Usamos trim() para eliminar espacios en blanco al inicio o al final.
+    // Así evitamos que alguien ponga "   " y pase como un dato válido.
+    $id = trim($_POST["id"]);
+    $nombre = trim($_POST["nombre"]);
+    $descripcion = trim($_POST["descripcion"]);
+    $precio = trim($_POST["precio"]);
+    $stock = trim($_POST["stock"]);
+    $categoria = trim($_POST["categoria"]);
 
-   
-    // Esto es vital para que no nos metan basura en el inventario.
+    // --- BLOQUE DE VALIDACIONES ESTRICTAS ---
 
     // 1. Que no haya campos en blanco
-    if (empty($id) || empty($nombre) || empty($descripcion) || empty($precio) || empty($stock) || empty($categoria)) {
-        $error = "Por favor, no deje campos vacíos.";
+    if ($id === "" || $nombre === "" || $descripcion === "" || $precio === "" || $stock === "" || $categoria === "") {
+        $error = "Por favor, no deje campos vacíos o solo con espacios.";
     }
-    // 2. Que el precio y stock sean obligatoriamente numeros
-    else if (!is_numeric($precio) || !is_numeric($stock)) {
-        $error = "El precio y el stock deben ser números válidos.";
+    // 2. Validar que la CATEGORÍA solo tenga letras y espacios (se permiten acentos y ñ)
+    else if (!preg_match('/^[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/', $categoria)) {
+        $error = "La categoría no es válida. Solo debe contener letras y espacios (sin números ni símbolos).";
     }
-    // 3. Que no haya precios ni inventarios en negativo 
-    else if ($precio < 0 || $stock < 0) {
-        $error = "No se permiten valores numéricos negativos.";
+    // 3. Validar el PRECIO: Debe ser numérico y no puede ser negativo
+    else if (!is_numeric($precio) || $precio < 0) {
+        $error = "El precio debe ser un número válido mayor o igual a cero.";
+    }
+    // 4. Validar el STOCK: ctype_digit verifica que SOLO haya números del 0 al 9.
+    // Automáticamente rechaza letras, números negativos (por el signo -) y decimales (por el punto).
+    else if (!ctype_digit($stock)) {
+        $error = "El stock debe ser un número entero exacto (sin decimales, letras ni valores negativos).";
     }
     else {
-        // 4. Validar que el ID sea unico. 
-        // Recorremos todo el inventario buscando si alguien ya uso ese ID.
+        // 5. Validar que el ID sea único. 
         foreach ($_SESSION["productos"] as $producto) {
             if ($producto["id"] == $id) {
-                $error = "El ID ingresado ya existe en el inventario.";
-                // Si encontramos uno igual, ya no hace falta seguir buscando
+                $error = "El ID ingresado ya existe en el inventario. Use uno diferente.";
                 break; 
             }
         }
 
-        // Si despues de pasar  los filtros, la variable $error sigue vacía, significa que todo esta perfecto
+        // Si la variable $error sigue vacía, los datos son 100% seguros
         if ($error == "") {
             
-            // Armamos un nuevo arreglo asociativo con los datos limpios
             $nuevo = array(
                 "id" => $id,
                 "nombre" => $nombre,
@@ -60,12 +59,9 @@ if (isset($_POST["guardar"])) {
                 "categoria" => $categoria
             );
 
-            // Metemos este nuevo arreglo al final de nuestra matriz principal de la sesión
             array_push($_SESSION["productos"], $nuevo);
 
-            // Redirigimos al usuario a la tabla principal para que vea su producto agregado
             header("Location: index.php");
-            // Usamos exit() siempre después de un header para que el script no siga corriendo en segundo plano
             exit(); 
         }
     }
@@ -126,7 +122,7 @@ if (isset($_POST["guardar"])) {
                                 <label class="form-label">Categoría</label>
                                 <div class="input-group">
                                     <span class="input-group-text border-end-0"><i class="bi bi-tags"></i></span>
-                                    <input type="text" name="categoria" class="form-control border-start-0" placeholder="Ej. Tecnología" required>
+                                    <input type="text" name="categoria" class="form-control border-start-0" placeholder="Solo letras" pattern="[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+" title="Solo se permiten letras y espacios" required>
                                 </div>
                             </div>
                         </div>
@@ -152,7 +148,7 @@ if (isset($_POST["guardar"])) {
                                 <label class="form-label">Precio ($)</label>
                                 <div class="input-group">
                                     <span class="input-group-text border-end-0"><i class="bi bi-currency-dollar"></i></span>
-                                    <input type="text" name="precio" class="form-control border-start-0" placeholder="0.00" required>
+                                    <input type="number" name="precio" class="form-control border-start-0" placeholder="0.00" min="0" step="0.01" required>
                                 </div>
                             </div>
                             
@@ -160,7 +156,7 @@ if (isset($_POST["guardar"])) {
                                 <label class="form-label">Stock Inicial</label>
                                 <div class="input-group">
                                     <span class="input-group-text border-end-0"><i class="bi bi-boxes"></i></span>
-                                    <input type="text" name="stock" class="form-control border-start-0" placeholder="Cantidad" required>
+                                    <input type="number" name="stock" class="form-control border-start-0" placeholder="Cantidad entera" min="0" step="1" required>
                                 </div>
                             </div>
                         </div>
