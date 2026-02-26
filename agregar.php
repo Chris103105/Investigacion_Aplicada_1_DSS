@@ -1,14 +1,19 @@
 <?php
+ //lo primero es arrancar la sesión para poder guardar o leer datos
 session_start();
 
+// Si por alguna razón la matriz no existe  la creamos
 if (!isset($_SESSION["productos"])) {
     $_SESSION["productos"] = array();
 }
 
+// Variable para guardar y mostrar mensajes de error al usuario
 $error = "";
 
+// Solo ejecutamos este bloque si el usuario le dio clic al botón con el name="guardar"
 if (isset($_POST["guardar"])) {
 
+    // Recibimos todos los datos que el usuario escribio en el formulario
     $id = $_POST["id"];
     $nombre = $_POST["nombre"];
     $descripcion = $_POST["descripcion"];
@@ -16,25 +21,36 @@ if (isset($_POST["guardar"])) {
     $stock = $_POST["stock"];
     $categoria = $_POST["categoria"];
 
-    // Validaciones básicas
+   
+    // Esto es vital para que no nos metan basura en el inventario.
+
+    // 1. Que no haya campos en blanco
     if (empty($id) || empty($nombre) || empty($descripcion) || empty($precio) || empty($stock) || empty($categoria)) {
         $error = "Por favor, no deje campos vacíos.";
     }
+    // 2. Que el precio y stock sean obligatoriamente numeros
     else if (!is_numeric($precio) || !is_numeric($stock)) {
         $error = "El precio y el stock deben ser números válidos.";
     }
+    // 3. Que no haya precios ni inventarios en negativo 
     else if ($precio < 0 || $stock < 0) {
         $error = "No se permiten valores numéricos negativos.";
     }
     else {
-        // Verificar ID repetido
+        // 4. Validar que el ID sea unico. 
+        // Recorremos todo el inventario buscando si alguien ya uso ese ID.
         foreach ($_SESSION["productos"] as $producto) {
             if ($producto["id"] == $id) {
                 $error = "El ID ingresado ya existe en el inventario.";
+                // Si encontramos uno igual, ya no hace falta seguir buscando
+                break; 
             }
         }
 
+        // Si despues de pasar  los filtros, la variable $error sigue vacía, significa que todo esta perfecto
         if ($error == "") {
+            
+            // Armamos un nuevo arreglo asociativo con los datos limpios
             $nuevo = array(
                 "id" => $id,
                 "nombre" => $nombre,
@@ -44,10 +60,13 @@ if (isset($_POST["guardar"])) {
                 "categoria" => $categoria
             );
 
+            // Metemos este nuevo arreglo al final de nuestra matriz principal de la sesión
             array_push($_SESSION["productos"], $nuevo);
 
+            // Redirigimos al usuario a la tabla principal para que vea su producto agregado
             header("Location: index.php");
-            exit(); // Importante detener el script después de redirigir
+            // Usamos exit() siempre después de un header para que el script no siga corriendo en segundo plano
+            exit(); 
         }
     }
 }
@@ -64,7 +83,7 @@ if (isset($_POST["guardar"])) {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
     
-    <link rel="stylesheet" href="estilos.css">
+    <link rel="stylesheet" href="css/estilo.css">
 </head>
 <body>
 
@@ -78,6 +97,7 @@ if (isset($_POST["guardar"])) {
             </div>
 
             <div class="card dashboard-card">
+                
                 <div class="card-header-custom text-center">
                     <h4 class="mb-0 fw-medium"><i class="bi bi-box-seam me-2"></i>Detalles del Producto</h4>
                 </div>
@@ -149,6 +169,7 @@ if (isset($_POST["guardar"])) {
                             <button type="submit" name="guardar" class="btn btn-sell-gradient py-2 fw-bold" style="font-size: 1.1rem;">
                                 <i class="bi bi-save me-2"></i> Guardar Producto
                             </button>
+                            
                             <a href="index.php" class="btn btn-light border py-2 text-muted fw-medium mt-2 transition">
                                 <i class="bi bi-arrow-left me-2"></i> Cancelar y Volver
                             </a>
